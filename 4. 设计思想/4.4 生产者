@@ -1,0 +1,11 @@
+## 负载均衡
+
+producer 直接将数据发给对应 partition leader 所在的 broker，这期间没有任何路由模块介入。为了保证 producer 具备上述这种能力，Kafka 每个 broker 节点在任何时间都可以响应集群元数据信息请求，这些元数据信息包括「哪些 broker 节点存活」以及「一个topic 上的 partition 的 leader 节点都在哪个 broker 上」等等。
+
+一条消息应该发送到哪个 partition 上去是由客户端决定的。如何选择 partition 可以通过随机算法、一些负载均衡算法或者是特定的计算partition 函数。我们将计算 partition 的函数接口暴露给使用者，使用者可以指定一个 key，然后基于这个 key 做 hash 来计算出对应的 partition（当然如果使用者需要的话，这个计算 partition 的函数也是可以由使用者自定义的）。比如说，如果使用者选择 userId 作为 key，那么一个给定的用户的所有事件都会发送到同一个 partition 上，这带来的一个好处就是允许 consumer 对他们的消费行为作出「区域性假设」。这种分区模式设计的一个初衷就是允许 consumer 进行局部敏感消费。
+
+## 异步发送
+
+批量处理是 Kafka 提升效率的一大神器。为了实现批量发送，producer 会尝试在内存中将数据攒一攒，然后再通过一个单一大请求将它们一块发出去。这种批量操作是可配置的，可以等到固定数量的消息（默认 64k ）或者是固定时长（默认 10ms ）。这种操作使得可以发送更多的字节以及 server 端更少的大I/O操作。当然这种缓存机制也是可配置的，而且提供了一种在额外消息延时和吞吐量之间进行权衡的机制。
+
+在文档中的其他地方可以找到关于 producer [配置](https://kafka.apache.org/20/documentation.html#producerconfigs)以及 [api](https://kafka.apache.org/082/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html) 的更多细节。
